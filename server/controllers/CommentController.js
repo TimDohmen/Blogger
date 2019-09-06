@@ -49,7 +49,7 @@ export default class CommentController {
     try {
       //NOTE the user id is accessable through req.body.uid, never trust the client to provide you this information
       req.body.authorId = req.session.uid
-      let data = await _commentService.create(req.body)
+      let data = await _commentService.create({ _id: req.params.id, authorId: req.session.uid }, req.body)
       res.send(data)
     } catch (error) { next(error) }
   }
