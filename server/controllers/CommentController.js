@@ -9,7 +9,6 @@ export default class CommentController {
   constructor() {
     this.router = express.Router()
       //NOTE all routes after the authenticate method will require the user to be logged in to access
-      .get('', this.getAll)
       .get('/:id', this.getById)
       .use(Authorize.authenticated)
       .post('', this.create)
@@ -17,18 +16,13 @@ export default class CommentController {
       .delete('/:id', this.delete)
   }
 
-  async getAll(req, res, next) {
-    try {
-      let data = await _commentService.find({})
-        .populate('authorId', 'name')
-      return res.send(data)
-    } catch (error) { next(error) }
 
-  }
 
   async getById(req, res, next) {
     try {
       let data = await _commentService.findById(req.params.id)
+        .populate('author', 'name')
+
       if (!data) {
         throw new Error("Invalid Id")
       }
@@ -36,27 +30,21 @@ export default class CommentController {
     } catch (error) { next(error) }
   }
 
-  async getComments(req, res, next) {
-    try {
-      let data = await _commentService.find({ commentId: req.params.id })
-        .populate('authorId', 'name')
-      return res.send(data)
-    } catch (error) { next(error) }
 
-  }
 
   async create(req, res, next) {
     try {
       //NOTE the user id is accessable through req.body.uid, never trust the client to provide you this information
-      req.body.authorId = req.session.uid
-      let data = await _commentService.create({ _id: req.params.id, authorId: req.session.uid }, req.body)
+      req.body.author = req.session.uid
+      let data = await _commentService.create(req.body)
       res.send(data)
     } catch (error) { next(error) }
   }
 
   async edit(req, res, next) {
     try {
-      let data = await _commentService.findOneAndUpdate({ _id: req.params.id, authorId: req.session.uid }, req.body, { new: true })
+      let data = await _commentService.findOneAndUpdate({ _id: req.params.id, author: req.session.uid }, req.body, { new: true })
+        .populate('author', 'name')
       if (data) {
         return res.send(data)
       }
@@ -68,7 +56,10 @@ export default class CommentController {
 
   async delete(req, res, next) {
     try {
-      await _commentService.findOneAndRemove({ _id: req.params.id, authorId: req.session.uid })
+      let data = await _commentService.findOneAndRemove({ _id: req.params.id, author: req.session.uid })
+      if (!data) {
+        throw new Error("invalid id")
+      }
       res.send("deleted value")
     } catch (error) { next(error) }
 
